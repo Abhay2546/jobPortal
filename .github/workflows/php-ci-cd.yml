@@ -1,0 +1,59 @@
+name: PHP CI/CD Pipeline
+
+# Trigger the workflow on push or pull request to the main branch
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    # Specify the environment to run the job
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Check out the repository
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # Step 2: Set up PHP environment
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v3
+      with:
+        php-version: '8.1'  # Specify your PHP version
+        extensions: mbstring, pdo, mysqli
+
+    # Step 3: Install dependencies using Composer
+    - name: Install Dependencies
+      run: composer install --no-progress --no-suggest
+
+    # Step 4: Run tests using PHPUnit
+    - name: Run Tests
+      run: vendor/bin/phpunit
+
+  deploy:
+    # Deploy after the build job succeeds
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Check out the repository
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    # Step 2: Deploy to the server
+    - name: Deploy to Server
+      env:
+        DEPLOY_SERVER: ${{ secrets.DEPLOY_SERVER }}
+        DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      run: |
+        ssh -i $DEPLOY_KEY $DEPLOY_USER@$DEPLOY_SERVER "
+          cd /path/to/your/project &&
+          git pull origin main &&
+          composer install &&
+          php artisan migrate
+        "
